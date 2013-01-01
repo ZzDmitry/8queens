@@ -308,8 +308,8 @@ function make8queensSolution_v2(QUEENS) {
 
 	/**
 	 * Remove last queen's hits.
-	 * @param queens
-	 * @param hits
+	 * @param {Array.<Number>} queens
+	 * @param {{y: Object, x: Array.<Number>}} hits
 	 */
 	function removeLastQueenHits(queens, hits) {
 		var x = queens.length - 1;
@@ -402,6 +402,220 @@ function make8queensSolution_v2(QUEENS) {
 	};
 }
 
+/**
+ * @param {Number} QUEENS
+ * @return {Object}
+ */
+function make8queensSolution_v3(QUEENS) {
+	var s_v1 = make8queensSolution(QUEENS);
+
+	/**
+	 * @param {Array.<Number>} queens
+	 */
+	function showQueens(queens) {
+		s_v1.showQueens(queens);
+	}
+
+	/**
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 */
+	function showHits(hits) {
+		var y;
+		var s = '';
+		for (y = 0; y < QUEENS; y++)
+			s += (hits.y[y] ? '+' : '-') + ' ';
+		log('H: ' + s);
+		log('V: ' + hits.x.join(' '));
+		var x;
+		for (x = 0; x < hits.allow_y.length; x++) {
+			s = '';
+			for (y = 0; y < QUEENS; y++)
+				s += (hits.allow_y[x][y] ? '+' : '-') + ' ';
+			log('A' + x + ': ' + s);
+		}
+	}
+
+	/**
+	 * Find position for the queen with given x.
+	 * Return <0 if fail.
+	 * @param {Number} x
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 * @return {Number}
+	 */
+	function findQueenPlace(x, hits) {
+		/**
+		 * Return true if queen can be at (x, y)
+		 * @param {Number} y
+		 * @return {Boolean}
+		 */
+		function checkY(y) {
+			var hit_x;
+			for (hit_x = 0; hit_x < x; hit_x++) {
+				var dx = x - hit_x;
+				var dy = Math.abs(y - hits.x[hit_x]);
+				if (dx == dy)
+					return false;
+			}
+			return true;
+		}
+
+		var y;
+		for (y in hits.allow_y[x]) {
+			if (!hits.allow_y[x].hasOwnProperty(y))
+				continue;
+			y = +y;
+			delete hits.allow_y[x][y];
+			if (checkY(y))
+				return y;
+		}
+		return -1;
+	}
+
+	/**
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 */
+	function calculateAllowY(hits) {
+		var allow_y = {};
+		var y;
+		for (y = 0; y < QUEENS; y++) {
+			if (!hits.y[y])
+				allow_y[y] = true;
+		}
+		hits.allow_y.push(allow_y);
+	}
+
+	/**
+	 * Add new queen to the queens array.
+	 * Return true if success,
+	 * return false if fail, in that case queens array will be not changed.
+	 * @param {Array.<Number>} queens
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 * @return {Boolean}
+	 */
+	function addQueen(queens, hits) {
+		var x = queens.length;
+		calculateAllowY(hits);
+		var y = findQueenPlace(x, hits);
+		if (y < 0) {
+			hits.allow_y.pop();
+			return false;
+		}
+		queens.push(y);
+		return true;
+	}
+
+	/**
+	 * Add hits for last queen in the queens array.
+	 * @param {Array.<Number>} queens
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 */
+	function addLastQueenHits(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens[x];
+		hits.y[y] = true;
+		hits.x[x] = y;
+	}
+
+	/**
+	 * Remove last queen's hits.
+	 * @param {Array.<Number>} queens
+	 * @param {{y: Object, allow_y: Array.<Object>, x: Array.<Number>}} hits
+	 */
+	function removeLastQueenHits(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens[x];
+		delete hits.y[y];
+		hits.x.pop();
+	}
+
+	/**
+	 * Move last queen to the new place, all previous queens hits as in 'hits' parameter.
+	 * Return true if success,
+	 * return false if fails, then remove last queen.
+	 * @param {Array.<Number>} queens
+	 * @param {{y: Object, allow_y: Object, x: Array.<Number>}} hits
+	 * @return {Boolean}
+	 */
+	function moveLastQueen(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens.pop() + 1;
+		if (y >= QUEENS) {
+			hits.allow_y.pop();
+			return false;
+		}
+		var new_y = findQueenPlace(x, hits);
+		if (new_y < 0) {
+			hits.allow_y.pop();
+			return false;
+		}
+		queens.push(new_y);
+		return true;
+	}
+
+	function solve() {
+		var solutions_count = 0;
+		var queens = [];
+		var hits = {y: {}, x: [], allow_y: []};
+		var add_queen = true;
+		var success;
+		while (true) {
+			if (add_queen) {
+//				log('Add queen');
+				success = addQueen(queens, hits);
+				if (success) {
+					addLastQueenHits(queens, hits);
+//					log('success:');
+//					showQueens(queens);
+//					showHits(hits);
+					if (queens.length >= QUEENS) {
+						solutions_count++;
+//						log('Solution #' + solutions_count);
+//						showQueens(queens);
+						add_queen = false;
+					}
+				}
+				else {
+					add_queen = false;
+//					log('fail:');
+//					showQueens(queens);
+//					showHits(hits);
+				}
+			}
+			else {
+//				log('Move queen');
+				if (!queens.length) {
+//					log('Move no queens - break.');
+					break;
+				}
+				removeLastQueenHits(queens, hits);
+//				log('Remove last queen hits');
+//				showHits(hits);
+				success = moveLastQueen(queens, hits);
+				if (success) {
+					addLastQueenHits(queens, hits);
+//					log('success:');
+//					showQueens(queens);
+//					showHits(hits);
+					add_queen = true;
+				}
+				else {
+//					log('fail:');
+//					showQueens(queens);
+//					showHits(hits);
+				}
+			}
+		}
+		return solutions_count;
+	}
+
+
+	return {
+		showQueens: showQueens,
+		showHits: showHits,
+		solve: solve
+	};
+}
+
 function showSolutions(make_s, max_queens) {
 	var b = makeBenchmark();
 	var i;
@@ -418,6 +632,7 @@ function showSolutions(make_s, max_queens) {
 
 showSolutions(make8queensSolution, 12);
 showSolutions(make8queensSolution_v2, 12);
+showSolutions(make8queensSolution_v3, 12);
 
 /*
 cscript
