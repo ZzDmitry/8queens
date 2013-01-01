@@ -496,9 +496,9 @@ function logBenchmark(name, b) {
 		return;
 	}
 	log('Result: ' + b.result);
-	log('Time: ' + b.time.toPrecision(2));
+	log('Time: ' + +b.time.toPrecision(2));
 	log('Rounds: ' + b.rounds);
-	log('Test time: ' + b.test_time.toPrecision(2));
+	log('Test time: ' + +b.test_time.toPrecision(2));
 }
 
 function logBenchmark1(name, b) {
@@ -506,73 +506,92 @@ function logBenchmark1(name, b) {
 }
 
 /**
- * @param {Number} rounds
- * @param {*} result0
- * @param {Date} t0
- * @param {function(): *} f
- * @return {?Number}
+ * @param {Number} [MAX_TEST_TIME]
+ * @return {function(function(): *): ?{result: *, time: Number, rounds: Number, test_time: Number}}
  */
-function benchmark_test(rounds, result0, t0, f) {
-	var result;
-	while (rounds-- > 0) {
-		result = f();
-		if (result != result0)
-			return null;
-	}
-	return new Date() - t0;
-}
+function makeBenchmark(MAX_TEST_TIME) {
 
-function benchmark_empty() {
-}
-
-/**
- * @param {function(): *} f
- * @param {Number} [max_time]
- * @return {?{result: *, time: Number, rounds: Number, test_time: Number}}
- */
-function benchmark(f, max_time) {
-	max_time = max_time || 1000;
-
-	f = f || function(){};
-
-	var t0 = new Date();
-	var result0 = f();
-	var test_time = new Date() - t0;
-	var rounds = 1;
-	var overall_test_time = test_time;
-
-	while (true) {
-		var can_repeat_last_times = (max_time - overall_test_time) / test_time;
-		if (can_repeat_last_times < 2) {
-			return {
-				result: result0,
-				time: test_time / rounds,
-				rounds: rounds,
-				test_time: overall_test_time
-			};
+	/**
+	 * @param {Number} rounds
+	 * @param {*} result0
+	 * @param {Date} t0
+	 * @param {function(): *} f
+	 * @return {?Number}
+	 */
+	function benchmark_test(rounds, result0, t0, f) {
+		var result;
+		while (rounds-- > 0) {
+			result = f();
+			if (result != result0)
+				return null;
 		}
-
-		var repeat_times = Math.min(can_repeat_last_times, 100);
-		rounds = Math.floor(rounds * repeat_times);
-		test_time = benchmark_test(rounds, result0, new Date(), f);
-		if (test_time === null)
-			return null;
-		log([rounds, test_time, test_time / rounds]);
-		var cur_time = new Date();
-
-		overall_test_time = cur_time - t0;
+		return new Date() - t0;
 	}
+
+	function benchmark_empty() {
+	}
+
+	/**
+	 * @param {function(): *} f
+	 * @param {Number} [max_time]
+	 * @return {?{result: *, time: Number, rounds: Number, test_time: Number}}
+	 */
+	function benchmark(f, max_time) {
+		max_time = max_time || 1000;
+
+		f = f || benchmark_empty;
+
+		var t0 = new Date();
+		var result0 = f();
+		var test_time = new Date() - t0;
+		var rounds = 1;
+		var overall_test_time = test_time;
+
+		while (true) {
+			var can_repeat_last_times = (max_time - overall_test_time) / test_time;
+			if (can_repeat_last_times < 2) {
+				return {
+					result: result0,
+					time: test_time / rounds,
+					rounds: rounds,
+					test_time: overall_test_time
+				};
+			}
+
+			var repeat_times = Math.min(can_repeat_last_times, 100);
+			rounds = Math.floor(rounds * repeat_times);
+			test_time = benchmark_test(rounds, result0, new Date(), f);
+			if (test_time === null)
+				return null;
+			//log([rounds, test_time, +(test_time / rounds).toPrecision(2)]);
+			var cur_time = new Date();
+
+			overall_test_time = cur_time - t0;
+		}
+	}
+
+	MAX_TEST_TIME = MAX_TEST_TIME || 1000;
+	return function(f){
+		var result = benchmark(f, MAX_TEST_TIME * 0.9);
+		if (!result)
+			return result;
+		var emptyResult = benchmark(function(){}, MAX_TEST_TIME * 0.1);
+		result.time -= emptyResult.time;
+		if (result.time < 0)
+			result.time = 0;
+		result.test_time += emptyResult.time;
+		return result;
+	};
 }
+
+
+var benchmark = makeBenchmark();
+
+logBenchmark('t', benchmark());
 
 logBenchmark('t0', benchmark(function(){
 }));
 
-logBenchmark('empty', benchmark(benchmark_empty));
-logBenchmark('empty2', benchmark(benchmark_empty));
-
-//logBenchmark('t', benchmark());
-
-/*
 logBenchmark('t1', benchmark(function(){
 	return 123;
 }));
@@ -612,87 +631,3 @@ logBenchmark('t-7', benchmark(function(){
 		sum += i;
 	return sum;
 }));
-*/
-
-
-/**
- * @param {Number} [MAX_TEST_TIME]
- * @return {function(function(): *): ?{result: *, time: Number, rounds: Number, test_time: Number}}
- */
-function makeBenchmark(MAX_TEST_TIME) {
-	MAX_TEST_TIME = MAX_TEST_TIME || 1000;
-	return function(f){
-		var result = benchmark(f, MAX_TEST_TIME);
-		if (!result)
-			return result;
-		var emptyResult = benchmark(function(){}, MAX_TEST_TIME / 10);
-		result.time -= emptyResult.time;
-		if (result.time < 0)
-			result.time = 0;
-		result.test_time += emptyResult.time;
-		return result;
-	};
-}
-/*
-log('-------');
-
-//////////////////////////////////////
-var benchmark2 = makeBenchmark(1000);
-
-logBenchmark('t0', benchmark2(function(){
-}));
-
-logBenchmark('t1', benchmark2(function(){
-	return 123;
-}));
-
-logBenchmark('t2', benchmark2(function(){
-	return 123 * Math.random();
-}));
-
-logBenchmark('t-1', benchmark2(function(){
-	var i;
-	var sum = 0;
-	for (i = 0; i < 10; i++)
-		sum += i;
-	return sum;
-}));
-
-logBenchmark('t-3', benchmark2(function(){
-	var i;
-	var sum = 0;
-	for (i = 0; i < 1000; i++)
-		sum += i;
-	return sum;
-}));
-
-logBenchmark('t-6', benchmark2(function(){
-	var i;
-	var sum = 0;
-	for (i = 0; i < 1000000; i++)
-		sum += i;
-	return sum;
-}));
-
-logBenchmark('t-7', benchmark2(function(){
-	var i;
-	var sum = 0;
-	for (i = 0; i < 10000000; i++)
-		sum += i;
-	return sum;
-}));
-*/
-
-///**
-// * Round the float value to the given number of digits
-// * @param {Number} val
-// * @param {Number} digits
-// * @return {Number}
-// */
-//function floatRound(val, digits) {
-//	var l = Math.log(val);
-//	var p = digits + Math.floor(-(Math.log(val) / Math.log(10)));
-//	var mul = Math.pow(10, p);
-//	log([val, digits, p, mul]);
-//	return Math.round(val * mul) / mul;
-//}
