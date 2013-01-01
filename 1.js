@@ -9,12 +9,6 @@ function log(s) {
 		console.log(s);
 }
 
-/*
-log('Hello, world!');
-log({a:123});
-log([1,2,'aas']);
-*/
-
 /**
  * @param {Number} QUEENS
  * @return {Object}
@@ -408,10 +402,7 @@ function make8queensSolution_v2(QUEENS) {
 	};
 }
 
-//var s1 = make8queensSolution(10);
-//log(solve(s1));
-
-function showSolutions1(make_s, max_queens) {
+function showSolutions(make_s, max_queens) {
 	var b = makeBenchmark();
 	var i;
 	for (i = 1; i <= max_queens; i++) {
@@ -425,8 +416,8 @@ function showSolutions1(make_s, max_queens) {
 	}
 }
 
-//showSolutions1(make8queensSolution, 8);
-//showSolutions1(make8queensSolution_v2, 8);
+showSolutions(make8queensSolution, 12);
+showSolutions(make8queensSolution_v2, 12);
 
 /*
 cscript
@@ -584,7 +575,7 @@ function makeBenchmark(MAX_TEST_TIME) {
 	};
 }
 
-
+/*
 var benchmark = makeBenchmark();
 
 logBenchmark('t', benchmark());
@@ -631,3 +622,4 @@ logBenchmark('t-7', benchmark(function(){
 		sum += i;
 	return sum;
 }));
+*/
