@@ -616,6 +616,319 @@ function make8queensSolution_v3(QUEENS) {
 	};
 }
 
+/**
+ * @param {Number} QUEENS
+ * @return {Object}
+ */
+function make8queensSolution_v4(QUEENS) {
+	var s_v1 = make8queensSolution(QUEENS);
+
+	/**
+	 * @type {function(Array.<Number>)}
+	 */
+	var showQueens = s_v1.showQueens;
+
+	function diagLName(x, y) {
+		return QUEENS - 1 + x - y;
+	}
+
+	function diagRName(x, y) {
+		return x + y;
+	}
+
+	var linkArray = {
+		make: function(n, value) {
+			var a = new Array(n);
+			var i;
+			for (i = 0; i < n; i++)
+				a[i] = [value];
+			return a;
+		},
+		setValue: function(arr, i, value) {
+			arr[i][0] = value;
+		},
+		getValue: function(arr, i) {
+			return arr[i][0];
+		}
+	};
+
+	function Hits() {
+
+		function makeHits() {
+			var horizontals = linkArray.make(QUEENS, 0);
+			var diagonalsL = linkArray.make(2* QUEENS - 1, 0);
+			var diagonalsR = linkArray.make(2* QUEENS - 1, 0);
+
+			var field = (function(){
+				var rows = [];
+				var x;
+				var y;
+				for (y = 0; y < QUEENS; y++) {
+					rows.push(new Array(QUEENS));
+					for (x = 0; x < QUEENS; x++) {
+						rows[y][x] = {
+							h: horizontals[y],
+							dl: diagonalsL[diagLName(x, y)],
+							dr: diagonalsR[diagRName(x, y)]
+						};
+					}
+				}
+				return rows;
+			})();
+
+			return {
+				horizontals: horizontals,
+				diagonalsL: diagonalsL,
+				diagonalsR: diagonalsR,
+				field: field
+			};
+		}
+
+		var h = makeHits();
+		this.horizontals = h.horizontals;
+		this.diagonalsL = h.diagonalsL;
+		this.diagonalsR = h.diagonalsR;
+
+		/**
+		 * @param {Object} hits
+		 * @param {Number} x
+		 * @param {Number} y
+		 * @return {Boolean}
+		 */
+		function isHit(hits, x, y) {
+			if (linkArray.getValue(hits.horizontals, y))
+				return true;
+			if (linkArray.getValue(hits.diagonalsL, diagLName(x, y)))
+				return true;
+			if (linkArray.getValue(hits.diagonalsR, diagRName(x, y)))
+				return true;
+			return false;
+		}
+	/*
+		var h = makeHits();
+		linkArray.setValue(h.horizontals, 2, true);
+		linkArray.setValue(h.diagonalsL, 2, true);
+		linkArray.setValue(h.diagonalsR, 4, true);
+		//log(JSON.stringify(h));
+		showHits(h);
+	*/
+		/**
+		 * @param {Object} hits
+		 */
+		function showHits(hits) {
+			var x;
+			var y;
+			var s;
+			s = '';
+			for (y = 0; y < QUEENS; y++)
+				s += (linkArray.getValue(hits.horizontals, y) ? '+' : '-') + ' ';
+			log('H: ' + s);
+			s = '';
+			for (y = 0; y < 2 * QUEENS - 1; y++)
+				s += (linkArray.getValue(hits.diagonalsL, y) ? '+' : '-') + ' ';
+			log('\\: ' + s);
+			s = '';
+			for (y = 0; y < 2 * QUEENS - 1; y++)
+				s += (linkArray.getValue(hits.diagonalsR, y) ? '+' : '-') + ' ';
+			log('/: ' + s);
+			for (y = 0; y < QUEENS; y++) {
+				s = '';
+				for (x = 0; x < QUEENS; x++)
+					s += (isHit(hits, x, y) ? '+' : '-') + ' ';
+				log(s);
+			}
+		}
+
+		arguments.callee.prototype.show = function() {
+			showHits(this);
+		};
+		arguments.callee.prototype.isHit = function(x, y) {
+			return isHit(this, x, y);
+		};
+	}
+
+	Hits.prototype = {
+		_setH: function(i, val) {
+			linkArray.setValue(this.horizontals, i, val);
+		},
+		_setDL: function(i, val) {
+			linkArray.setValue(this.diagonalsL, i, val);
+		},
+		_setDR: function(i, val) {
+			linkArray.setValue(this.diagonalsR, i, val);
+		},
+		setPos: function(x, y, val) {
+			this._setH(y, val);
+			this._setDL(diagLName(x, y), val);
+			this._setDR(diagRName(x, y), val);
+		}
+	};
+
+//	var h = new Hits();
+/*
+	h._setH(2, true);
+	h._setDL(2, true);
+	h._setDR(4, true);
+*/
+//	linkArray.setValue(h.horizontals, 2, true);
+//	linkArray.setValue(h.diagonalsL, 2, true);
+//	linkArray.setValue(h.diagonalsR, 4, true);
+	//log(JSON.stringify(h));
+/*
+	h.setPos(2,0,true);
+	h.show();
+	h.setPos(2,0,false);
+	h.show();
+	h.setPos(2,0,true);
+	h.show();
+	h.setPos(3,1,true);
+	h.show();
+	h.setPos(2,0,false);
+	h.show();
+	h.setPos(2,0,true);
+	h.setPos(3,1,true);
+	h.show();
+*/
+	function showHits(hits) {
+		hits.show();
+	}
+
+	function addQueen(queens, hits) {
+		var x = queens.length;
+		var y = findQueenPlace(x, 0, hits);
+		if (y < 0)
+			return false;
+		queens.push(y);
+		return true;
+	}
+
+	function addLastQueenHits(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens[x];
+		hits.setPos(x, y, 1);
+	}
+
+	function removeLastQueenHits(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens[x];
+		hits.setPos(x, y, 0);
+	}
+
+	function findQueenPlace(x, y_min, hits) {
+		var y;
+		for (y = y_min; y < QUEENS; y++) {
+			if (!hits.isHit(x, y))
+				return y;
+		}
+		return -1;
+	}
+
+	function moveLastQueen(queens, hits) {
+		var x = queens.length - 1;
+		var y = queens.pop() + 1;
+		if (y >= QUEENS)
+			return false;
+		var new_y = findQueenPlace(x, y, hits);
+		if (new_y < 0)
+			return false;
+		queens.push(new_y);
+		return true;
+	}
+
+	function solve(show_log) {
+
+		var l = show_log ? {
+			log: log,
+			showQueens: showQueens,
+			showHits: showHits
+		} : {
+			log: function(){},
+			showQueens: function(){},
+			showHits: function(){}
+		};
+
+		var solutions_count = 0;
+		var queens = [];
+		var hits = new Hits();
+		var add_queen = true;
+		var success;
+		while (true) {
+			if (add_queen) {
+				l.log('Add queen');
+				success = addQueen(queens, hits);
+				if (success) {
+					addLastQueenHits(queens, hits);
+					l.log('success:');
+					l.showQueens(queens);
+					l.showHits(hits);
+					if (queens.length >= QUEENS) {
+						solutions_count++;
+						l.log('Solution #' + solutions_count);
+						l.showQueens(queens);
+						add_queen = false;
+					}
+				}
+				else {
+					add_queen = false;
+					l.log('fail:');
+					l.showQueens(queens);
+					l.showHits(hits);
+				}
+			}
+			else {
+				l.log('Move queen');
+				if (!queens.length) {
+					l.log('Move no queens - break.');
+					break;
+				}
+				removeLastQueenHits(queens, hits);
+				l.log('Remove last queen hits');
+				l.showHits(hits);
+				success = moveLastQueen(queens, hits);
+				if (success) {
+					addLastQueenHits(queens, hits);
+					l.log('success:');
+					l.showQueens(queens);
+					l.showHits(hits);
+					add_queen = true;
+				}
+				else {
+					l.log('fail:');
+					l.showQueens(queens);
+					l.showHits(hits);
+				}
+			}
+		}
+		return solutions_count;
+	}
+
+
+	return {
+		showQueens: showQueens,
+		solve: solve
+	}
+}
+
+//var s = make8queensSolution_v4(5);
+//log(s.solve(true));
+
+(function(){
+	var s, x, y;
+	for (y = 0; y < 4; y++) {
+		s = '';
+		for (x = 0; x < 4; x++)
+			s += '\t' + (3 + x - y) + ' ';
+		log(s);
+	}
+	log('');
+	for (y = 0; y < 4; y++) {
+		s = '';
+		for (x = 0; x < 4; x++)
+			s += '\t' + (x + y) + ' ';
+		log(s);
+	}
+});
+
 function showSolutions(make_s, max_queens) {
 	var b = makeBenchmark();
 	var i;
@@ -630,9 +943,10 @@ function showSolutions(make_s, max_queens) {
 	}
 }
 
-showSolutions(make8queensSolution, 12);
-showSolutions(make8queensSolution_v2, 12);
-showSolutions(make8queensSolution_v3, 12);
+//showSolutions(make8queensSolution, 12);
+//showSolutions(make8queensSolution_v2, 8);
+//showSolutions(make8queensSolution_v3, 12);
+showSolutions(make8queensSolution_v4, 12);
 
 /*
 cscript
